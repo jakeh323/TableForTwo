@@ -45,7 +45,8 @@ export default async function handler(req,res){
     amenity:isCounter?'fast_food':'restaurant','addr:full':p.formattedAddress||'',
     website:p.websiteUri||'','price:range':levels[p.priceLevel]||'',
     image:photo?.name?'/api/photo?name='+encodeURIComponent(photo.name):'',
-    'google_maps_url':p.googleMapsUri||''
+    'google_maps_url':p.googleMapsUri||'',
+    'photo:credit':Array.isArray(photo?.authorAttributions)?photo.authorAttributions.map(a=>({name:String(a.displayName||''),url:String(a.uri||'').startsWith('//')?'https:'+a.uri:String(a.uri||'')})):[]
    }};
   });
   return res.status(200).json({provider:'Google Places',center,elements});
