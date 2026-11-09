@@ -1,0 +1,1 @@
+export default function handler(req,res){res.setHeader('Cache-Control','no-store');return res.status(200).json({provider:'Google Places',configured:Boolean(process.env.GOOGLE_PLACES_API_KEY?.trim())})}

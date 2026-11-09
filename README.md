@@ -34,3 +34,12 @@ No paid services or API keys are included.
 - Backend requests public directory servers in parallel with a 6.9-second deadline.
 - When free listings fail, show an external Google Maps restaurant-search link instead of synthetic/demo listings.
 - A managed Places API with a server-side key is recommended for reliably fast listings, menus and food photos.
+
+## Google Places API setup (November 2026)
+1. Create a Google Cloud project and enable billing.
+2. Enable **Places API (New)** and **Geocoding API**.
+3. Create a server-side key with API restrictions for those services, configure Google Cloud usage quotas and billing alerts.
+4. In Vercel for `table-for-two`, create the **encrypted** `GOOGLE_PLACES_API_KEY` variable for Production and Preview; redeploy.
+5. The key must never go in GitHub, frontend HTML or chat messages.
+
+The app now uses Google Places Nearby Search, not public Overpass/Nominatim. Search requires an API key and returns an explicit setup error immediately if missing. The browser has an 8-second hard search deadline. One search returns at most 20 restaurants, and additional fields/photos may incur charges. Photo resource names are not persisted to localStorage. The old offline service worker is unregistered to prevent stale caching.

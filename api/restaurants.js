@@ -1,33 +1,57 @@
-// Public restaurant data can fail; don't block the interface waiting on slow providers.
-const PROVIDERS=['https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass-api.de/api/interpreter'];
-const DEADLINE=6900,cache=new Map();
+// Google Places (New) server-only API; GOOGLE_PLACES_API_KEY never reaches clients.
+const cuisineTypes={mexican:'mexican_restaurant',italian:'italian_restaurant',japanese:'japanese_restaurant',chinese:'chinese_restaurant',thai:'thai_restaurant',indian:'indian_restaurant',asian:'asian_restaurant',mediterranean:'mediterranean_restaurant',bbq:'barbecue_restaurant',seafood:'seafood_restaurant',american:'american_restaurant'};
+const levels={PRICE_LEVEL_INEXPENSIVE:'$',PRICE_LEVEL_MODERATE:'$$',PRICE_LEVEL_EXPENSIVE:'$$$',PRICE_LEVEL_VERY_EXPENSIVE:'$$$$'};
+async function jsonRequest(url,options,signal){
+ const response=await fetch(url,{...options,signal});
+ const data=await response.json().catch(()=>null);
+ if(!response.ok||!data)throw Error(data?.error?.message||'Google Places HTTP '+response.status);
+ return data;
+}
 export default async function handler(req,res){
- res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+ res.setHeader('Cache-Control','no-store');
  if(req.method!=='GET')return res.status(405).json({error:'GET required'});
- const lat=Number(req.query.lat),lon=Number(req.query.lon),radius=Number(req.query.radius);
- if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||!Number.isFinite(radius)||radius<1||radius>30)return res.status(400).json({error:'Choose a valid location and radius from 1 to 30 miles.'});
- const key=[lat.toFixed(3),lon.toFixed(3),radius].join(':');
- const hit=cache.get(key);
- if(hit&&Date.now()-hit.time<15*60*1000)return res.status(200).json(hit.value);
- const query='[out:json][timeout:6];nwr["amenity"~"^(restaurant|fast_food|cafe)$"]["name"](around:'+Math.round(radius*1609.344)+','+lat+','+lon+');out center 450;';
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),DEADLINE);
- const fetchOne=async host=>{
-  const response=await fetch(host,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json','User-Agent':'TableForTwo/1.2'},body:new URLSearchParams({data:query}),signal:controller.signal});
-  if(!response.ok)throw Error('Provider HTTP '+response.status);
-  const data=await response.json();
-  if(data.remark||!Array.isArray(data.elements))throw Error('Provider returned an invalid response');
-  return {elements:data.elements,source:'OpenStreetMap / Overpass'};
- };
+ const key=process.env.GOOGLE_PLACES_API_KEY?.trim();
+ if(!key)return res.status(503).json({code:'SETUP_REQUIRED',error:'Google Places has not been connected. Add GOOGLE_PLACES_API_KEY in Vercel → Settings → Environment Variables, enable Places API (New) and Geocoding API in Google Cloud, and redeploy.'});
+ const area=String(req.query.area||'').trim().slice(0,140);
+ const radius=Number(req.query.radius||10),cuisine=String(req.query.cuisine||'any').toLowerCase();
+ const lat=Number(req.query.lat),lon=Number(req.query.lon);
+ if(!Number.isFinite(radius)||radius<1||radius>30)return res.status(400).json({error:'Choose a search radius between 1 and 30 miles.'});
+ if(!area&&!Number.isFinite(lat))return res.status(400).json({error:'Enter a location.'});
+ const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),6800);
  try{
-  const data=await Promise.any(PROVIDERS.map(fetchOne));
-  cache.set(key,{time:Date.now(),value:data});
-  if(cache.size>50)cache.delete(cache.keys().next().value);
-  return res.status(200).json(data);
+  let center;
+  if(Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180)center=[lat,lon];
+  else if(/^addison,\s*(tx|texas)$/i.test(area))center=[32.9618,-96.8292];
+  else{
+   const geo=await jsonRequest('https://maps.googleapis.com/maps/api/geocode/json?'+new URLSearchParams({address:area,key}),{},ctrl.signal);
+   if(geo.status!=='OK'||!geo.results?.length)throw Error(geo.error_message||'Location not found; enter a city and state or ZIP.');
+   const pos=geo.results[0].geometry?.location;
+   center=[Number(pos?.lat),Number(pos?.lng)];
+   if(!center.every(Number.isFinite))throw Error('Invalid location coordinates.');
+  }
+  const types=[cuisineTypes[cuisine]||'restaurant'];
+  const mask='places.id,places.displayName,places.location,places.types,places.primaryType,places.formattedAddress,places.websiteUri,places.googleMapsUri,places.priceLevel,places.dineIn,places.takeout,places.photos';
+  const data=await jsonRequest('https://places.googleapis.com/v1/places:searchNearby',{
+   method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':mask},
+   body:JSON.stringify({includedTypes:types,maxResultCount:20,rankPreference:'POPULARITY',locationRestriction:{circle:{center:{latitude:center[0],longitude:center[1]},radius:Math.min(50000,Math.round(radius*1609.344))}}})
+  },ctrl.signal);
+  const elements=(data.places||[]).filter(p=>p.id&&p.displayName?.text&&Number.isFinite(p.location?.latitude)&&Number.isFinite(p.location?.longitude)).map(p=>{
+   const type=p.primaryType||'restaurant';
+   const cuisineType=(p.types||[]).find(x=>/_restaurant$/.test(x)&&x!=='restaurant')||type;
+   const isCounter=/fast_food|sandwich_shop|pizza_delivery/.test(type)||(p.takeout===true&&p.dineIn===false);
+   const photo=p.photos?.[0];
+   return {type:'google',id:p.id,lat:p.location.latitude,lon:p.location.longitude,tags:{
+    name:p.displayName.text,cuisine:cuisineType.replace(/_restaurant$/,'').replaceAll('_',' '),
+    amenity:isCounter?'fast_food':'restaurant','addr:full':p.formattedAddress||'',
+    website:p.websiteUri||'','price:range':levels[p.priceLevel]||'',
+    image:photo?.name?'/api/photo?name='+encodeURIComponent(photo.name):'',
+    'google_maps_url':p.googleMapsUri||''
+   }};
+  });
+  return res.status(200).json({provider:'Google Places',center,elements});
  }catch(e){
-  console.warn('Directory failures',e?.errors?.map(x=>x.message).join('; ')||e.message);
-  return res.status(503).json({error:'Live restaurant directories are busy. Try again or use the Google Maps link.'});
- }finally{
-  clearTimeout(timer);
-  controller.abort();
- }
+  if(e.name==='AbortError')return res.status(504).json({error:'Google Places timed out; please retry.'});
+  console.error('Google Places error:',e.message);
+  return res.status(502).json({error:'Google Places: '+e.message});
+ }finally{clearTimeout(timer)}
 }
