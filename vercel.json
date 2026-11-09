@@ -1,0 +1,1 @@
+{"framework":null,"functions":{"api/restaurants.js":{"maxDuration":60},"api/geocode.js":{"maxDuration":20}}}
