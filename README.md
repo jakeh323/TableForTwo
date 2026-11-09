@@ -21,3 +21,9 @@ Run `npm start`, then open `http://localhost:8080`. This provides the same serve
 - For consistently rich menu/photo coverage, integrate a licensed Places data provider and required API keys/billing, subject to their attribution and photo usage terms. Don't scrape food photos from Google or Yelp.
 
 No paid services or API keys are included.
+
+## November 2026 reliability update
+
+- Production restaurant requests now finish or fail in a bounded period and try two independent Overpass instances concurrently.
+- Demo restaurants and the demo button were removed, including old fictional listings persisted in browser storage.
+- If the free upstream directory is overloaded, the app shows an error and preserves prior real results.
