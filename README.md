@@ -27,3 +27,10 @@ No paid services or API keys are included.
 - Production restaurant requests now finish or fail in a bounded period and try two independent Overpass instances concurrently.
 - Demo restaurants and the demo button were removed, including old fictional listings persisted in browser storage.
 - If the free upstream directory is overloaded, the app shows an error and preserves prior real results.
+
+## Search responsiveness (November 2026)
+- Total client-side search deadline: 8.5 seconds, including geocoding. The Find button always resets.
+- Default Addison, TX search skips redundant geocoding.
+- Backend requests public directory servers in parallel with a 6.9-second deadline.
+- When free listings fail, show an external Google Maps restaurant-search link instead of synthetic/demo listings.
+- A managed Places API with a server-side key is recommended for reliably fast listings, menus and food photos.
