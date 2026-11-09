@@ -43,3 +43,7 @@ No paid services or API keys are included.
 5. The key must never go in GitHub, frontend HTML or chat messages.
 
 The app now uses Google Places Nearby Search, not public Overpass/Nominatim. Search requires an API key and returns an explicit setup error immediately if missing. The browser has an 8-second hard search deadline. One search returns at most 20 restaurants, and additional fields/photos may incur charges. Photo resource names are not persisted to localStorage. The old offline service worker is unregistered to prevent stale caching.
+
+
+## Geoapify Free setup (no payment card)
+App now uses Geoapify instead of Google Places. No billing-enabled Google key is needed. Sign up for Geoapify's Free plan at https://myprojects.geoapify.com/ (3,000 credits/day as advertised), without supplying a credit card. Copy your API key into Vercel project Settings / Environment Variables as GEOAPIFY_API_KEY; deploy the new production version. Remain on Free; do not upgrade. App limits results to 100 places, normally costing 5 free credits per query, plus 1 credit for geocoding when needed. Listing photos, menus and prices may be sparse. Attribution appears in UI.

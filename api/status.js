@@ -1,1 +1,1 @@
-export default function handler(req,res){res.setHeader('Cache-Control','no-store');return res.status(200).json({provider:'Google Places',configured:Boolean(process.env.GOOGLE_PLACES_API_KEY?.trim())})}
+export default function handler(req,res){res.setHeader('Cache-Control','no-store');if(req.method!=='GET')return res.status(405).json({error:'GET required'});return res.status(200).json({provider:'Geoapify Free',configured:Boolean(process.env.GEOAPIFY_API_KEY?.trim())})}

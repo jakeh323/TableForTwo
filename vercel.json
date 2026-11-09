@@ -1,1 +1,8 @@
-{"framework":null,"functions":{"api/restaurants.js":{"maxDuration":15},"api/photo.js":{"maxDuration":15},"api/geocode.js":{"maxDuration":15}}}
+{
+  "framework": null,
+  "functions": {
+    "api/restaurants.js": {
+      "maxDuration": 15
+    }
+  }
+}
