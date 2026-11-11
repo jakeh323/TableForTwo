@@ -58,3 +58,10 @@ Setup: in the Neon console, open the TableForTwo-rooms project (project id dark-
 
 ## Better restaurant discovery (November 2026)
 Geoapify Places search now requests up to 500 restaurants per page (API maximum). The next page is loaded only when the user clicks **Search next 500 in this area** (Geoapify's `offset` pagination), and results are deduplicated in the browser. The UI reveals 60 cards at a time rather than silently capping listings at 120. The backend also derives cuisine from `catering.restaurant.*` categories. Couples Rooms choose up to 60 from the current filtered/sorted list; press Shuffle before creating a room to change which places are shared. A 500-result page consumes approximately 25 of the 3,000 free daily Geoapify credits. This does not guarantee every restaurant exists in Geoapify/OpenStreetMap.
+
+
+## Nearest location for repeated restaurants (November 2026)
+- **Show only closest location of each restaurant** is on by default, and can be turned off to see every branch.
+- Grouping normalizes apostrophes, accents, punctuation, and store numbers, with common chain aliases such as Chili's and Chili's Grill & Bar.
+- The retained location is always the smallest distance from the searched center, regardless of how results are alphabetized or shuffled. This also applies across additional Geoapify pages.
+- Couples Room invites include only one branch of each restaurant when the toggle is enabled. Existing active rooms keep their original shortlist.
