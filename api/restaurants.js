@@ -13,9 +13,9 @@ function mapFeature(f){
  const name=s(p.name)||s(raw.name);
  if(!name||!Number.isFinite(lat)||!Number.isFinite(lon))return null;
  const cats=Array.isArray(p.categories)?p.categories:[];
- const counter=cats.some(x=>String(x).startsWith('catering.fast_food'));
+ const counter=cats.some(x=>String(x).startsWith('catering.fast_food')||String(x).startsWith('catering.cafe'));
  return {type:'geoapify',id:String(p.place_id||raw.osm_id||name+':'+lat+':'+lon),lat,lon,tags:{
-  name,cuisine:s(raw.cuisine)||s(p.cuisine)||s(cats.find(x=>String(x).startsWith('catering.fast_food.'))?.split('.').pop()),
+  name,cuisine:s(raw.cuisine)||s(p.cuisine)||s(cats.find(x=>String(x).startsWith('catering.restaurant.'))?.split('.').pop())||s(cats.find(x=>String(x).startsWith('catering.fast_food.'))?.split('.').pop()),
   amenity:counter?'fast_food':'restaurant',
   'addr:full':s(p.formatted)||s(p.address_line1),
   website:url(raw.website||raw['contact:website']||p.website),
@@ -32,6 +32,8 @@ export default async function handler(req,res){
  const latitude=Number(req.query.lat),longitude=Number(req.query.lon);
  if(!Number.isFinite(radius)||radius<1||radius>30)return res.status(400).json({error:'Choose a 1–30 mile radius.'});
  if(!area&&!Number.isFinite(latitude))return res.status(400).json({error:'Enter a location.'});
+ const offset=Number(req.query.offset||0);
+ if(!Number.isInteger(offset)||offset<0||offset>4500||offset%500!==0)return res.status(400).json({error:'Invalid results page.'});
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6700);
  try{
   let center;
@@ -48,11 +50,11 @@ export default async function handler(req,res){
    categories:'catering.restaurant,catering.fast_food,catering.cafe',
    filter:'circle:'+center[1]+','+center[0]+','+Math.round(radius*1609.344),
    bias:'proximity:'+center[1]+','+center[0],
-   limit:'100',apiKey:key
+   limit:'500',offset:String(offset),apiKey:key
   });
   const data=await get('https://api.geoapify.com/v2/places?'+params,controller.signal);
   if(!Array.isArray(data.features))throw Error('Restaurant response was invalid.');
-  return res.status(200).json({provider:'Geoapify',center,elements:data.features.map(mapFeature).filter(Boolean)});
+  return res.status(200).json({provider:'Geoapify',center,elements:data.features.map(mapFeature).filter(Boolean),fetched:data.features.length,hasMore:data.features.length===500&&offset<4500,nextOffset:offset+data.features.length,pageSize:500});
  }catch(e){
   if(e.name==='AbortError')return res.status(504).json({error:'The free directory timed out. Try again.'});
   console.warn('Geoapify error',String(e.message).slice(0,200));
