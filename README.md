@@ -47,3 +47,10 @@ The app now uses Google Places Nearby Search, not public Overpass/Nominatim. Sea
 
 ## Geoapify Free setup (no payment card)
 App now uses Geoapify instead of Google Places. No billing-enabled Google key is needed. Sign up for Geoapify's Free plan at https://myprojects.geoapify.com/ (3,000 credits/day as advertised), without supplying a credit card. Copy your API key into Vercel project Settings / Environment Variables as GEOAPIFY_API_KEY; deploy the new production version. Remain on Free; do not upgrade. App limits results to 100 places, normally costing 5 free credits per query, plus 1 credit for geocoding when needed. Listing photos, menus and prices may be sparse. Attribution appears in UI.
+
+
+## Couples Rooms v2.2
+Create a Couples Room by selecting real restaurant results, then tapping Start Swiping or Generate Room Code. The app creates a six-character invite code (or shareable link). Your partner enters it on another phone to vote on the same shortlist. Votes are saved to a free Neon Postgres database and polled every 4 seconds. Neither partner sees the other's votes, and shared matches unlock when both finish. Rooms expire after 24 hours.
+
+Setup: in the Neon console, open the TableForTwo-rooms project (project id dark-bread-49946419), click Connect and copy its pooled Postgres connection URL. Add it as `DATABASE_URL` (encrypted) in the **table-for-two** Vercel project's Production environment variables, then redeploy. Never put that password in GitHub, client HTML, or chat. No paid upgrade needed; Neon Free tier quotas will limit usage rather than automatically charge overages.
+
